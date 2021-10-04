@@ -1,6 +1,9 @@
+const https = require('https')
 const express = require('express');
 require('dotenv').config()
 const mongoose = require('mongoose');
+
+const fs = require('fs')
 
 const bodyParser = require('body-parser');
 
@@ -35,7 +38,7 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))
 app.use(express.static('client/public'));
 
 // ---------------- API Routes ------------------
-app.use('/db_api',crudRouter);
+app.use('/db_api', crudRouter);
 
 app.use('/api', api);
 
@@ -49,5 +52,9 @@ app.use((err, req, res, next) => {
 
 app.use('/auth/assets', express.static(path.join(__dirname, 'views/assets')));
 
-// Start Server
-app.listen(process.env.port || process.env.PORT || port, () => console.log(`server is running on port ${port}`));
+https.createServer({
+    key: fs.readFileSync('server.key'),
+    cert: fs.readFileSync('server.cert')
+}, app).listen(port, () => {
+    console.log(`Listening at ${port}...`)
+})
