@@ -45,8 +45,10 @@ exports.getResponseToBot = async (req, res) => {
         await supplierInformation()
     } else if (agent.intent === 'no_name_supplier') {
         await supplierList()
-    } else if (agent.intent === 'top_supplier') {
-        await topSupplier()
+    } else if (agent.intent === 'top_supplier_based_on_revenue') {
+        await topSupplierRevenue()
+    } else if (agent.intent === 'top_supplier_based_on_expenditure') {
+        await topSupplierExpenditure()
     }
 
     async function supplierList() {
@@ -107,7 +109,7 @@ exports.getResponseToBot = async (req, res) => {
         }
     }
 
-    async function topSupplier() {
+    async function topSupplierRevenue() {
         const departmentName = req.body.queryResult.parameters['department-names']
         const number = req.body.queryResult.parameters['number']
 
@@ -165,7 +167,7 @@ exports.getResponseToBot = async (req, res) => {
                 {
                     "text": {
                         "text": [
-                            `Top ${number} suppliers for ${departmentName}`
+                            `Top ${number} suppliers for ${departmentName} with highest revenue`
                         ]
                     }
                 },
@@ -186,7 +188,7 @@ exports.getResponseToBot = async (req, res) => {
                 {
                     "text": {
                         "text": [
-                            `Top ${number} suppliers`
+                            `Top ${number} suppliers with highest revenue`
                         ]
                     }
                 },
@@ -198,6 +200,99 @@ exports.getResponseToBot = async (req, res) => {
                 }
             ]
 
+        }
+    }
+
+    async function topSupplierExpenditure() {
+        const departmentName = req.body.queryResult.parameters['department-names']
+        const number = req.body.queryResult.parameters['number']
+
+        if (!!departmentName) {
+            const data = await Department.aggregate(
+                [
+                    {
+                        "$match": {
+                            "name": departmentName
+                        }
+                    },
+                    {
+                        "$lookup": {
+                            "from": "supplier",
+                            let: {
+                                eid: "$supplier_id"
+                            },
+                            pipeline: [
+                                {
+                                    "$match": {
+                                        $expr: {
+                                            $in: [
+                                                "$_id",
+                                                "$$eid"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $sort: {
+                                        spending: -1
+                                    }
+                                },
+                                {
+                                    "$limit": number
+                                }
+                            ],
+                            "as": "suppliers"
+                        }
+                    },
+                    {
+                        "$unwind": {
+                            path: "$suppliers"
+                        }
+                    },
+                    {
+                        "$replaceRoot": {
+                            "newRoot": "$suppliers"
+                        }
+                    }
+                ]
+            )
+
+            payload = [
+                {
+                    "text": {
+                        "text": [
+                            `Top ${number} suppliers for ${departmentName} with highest expenditure`
+                        ]
+                    }
+                },
+                {
+                    "payload": {
+                        "data": data,
+                        "type": "table"
+                    }
+                }
+            ]
+        } else {
+            const data = await Supplier.aggregate([
+                { $sort: { spending: -1 } },
+                { $limit: number }
+            ])
+
+            payload = [
+                {
+                    "text": {
+                        "text": [
+                            `Top ${number} suppliers with highest expenditure`
+                        ]
+                    }
+                },
+                {
+                    "payload": {
+                        "data": data,
+                        "type": "table"
+                    }
+                }
+            ]
         }
     }
     return (JSON.stringify({ "fulfillmentMessages": payload }))
