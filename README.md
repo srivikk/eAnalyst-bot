@@ -1,6 +1,6 @@
 # eAnalyst Bot
 
-eAnalyst Chatbot is a built using DialogFlow. The purpose of the bot is to provide information on different supply chains.
+eAnalyst Chatbot is built using Google DialogFlow. The purpose of the bot is to provide information on different supply chains.
 
 ## Steps to run the code
 
